@@ -1,0 +1,139 @@
+---
+Metadata:
+  AWSToolsMetrics:
+    IaC_Generator: "arn:aws:cloudformation:us-west-1:160814116633:generatedTemplate/6c8a64ff-d2aa-490b-9cad-cdee402ac2c1"
+Resources:
+  ApiGatewayDeployment00oiotxy00jsBrM:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::Deployment"
+    DeletionPolicy: "Retain"
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi00pe36p1f7bd00hEBD5"
+  S3BucketPolicy00usenergydata00RbFsY:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::S3::BucketPolicy"
+    DeletionPolicy: "Retain"
+    Properties:
+      Bucket:
+        Ref: "S3Bucket00usenergydata00WIGwi"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Resource: "arn:aws:s3:::us-energy-data/*"
+          Action: "s3:PutObject"
+          Effect: "Allow"
+          Principal:
+            Service: "apigateway.amazonaws.com"
+          Sid: "AllowApiGatewayPostToS3"
+  ApiGatewayApiKey00rst5cchrud00S0Xgr:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::ApiKey"
+    DeletionPolicy: "Retain"
+    Properties:
+      StageKeys: []
+      Value: "Zks8oexjKv8sk3WiNcqFM9t31IOncFTx1bYqSNsS"
+      Enabled: true
+      Name: "data_upload_key"
+  ApiGatewayRestApi00pe36p1f7bd00hEBD5:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::RestApi"
+    DeletionPolicy: "Retain"
+    Properties:
+      ApiKeySourceType: "HEADER"
+      EndpointConfiguration:
+        Types:
+        - "REGIONAL"
+      DisableExecuteApiEndpoint: false
+      Name: "data_upload"
+  ApiGatewayUsagePlan002z2fpj00ZgguH:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::UsagePlan"
+    DeletionPolicy: "Retain"
+    Properties:
+      ApiStages:
+      - Stage:
+          Ref: "ApiGatewayStage00dev00fxhNH"
+        ApiId:
+          Ref: "ApiGatewayRestApi00pe36p1f7bd00hEBD5"
+        Throttle: {}
+      Quota:
+        Period: "DAY"
+        Limit: 50
+        Offset: 0
+      Throttle:
+        BurstLimit: 1
+        RateLimit: 1
+      UsagePlanName: "data_upload"
+  S3Bucket00usenergydata00WIGwi:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::S3::Bucket"
+    DeletionPolicy: "Retain"
+    Properties:
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        BlockPublicAcls: true
+      BucketName: "us-energy-data"
+      OwnershipControls:
+        Rules:
+        - ObjectOwnership: "BucketOwnerEnforced"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - BucketKeyEnabled: true
+          ServerSideEncryptionByDefault:
+            SSEAlgorithm: "AES256"
+  IAMRole00datauploadrole00FCIZq:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::IAM::Role"
+    DeletionPolicy: "Retain"
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+      MaxSessionDuration: 3600
+      RoleName: "data_upload_role"
+      Description: "Allows API Gateway to push logs to CloudWatch Logs."
+      Policies:
+      - PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Resource: "arn:aws:s3:::us-energy-data/*"
+            Action: "s3:PutObject"
+            Effect: "Allow"
+            Sid: "VisualEditor0"
+        PolicyName: "upload-us-energy-data"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action: "sts:AssumeRole"
+          Effect: "Allow"
+          Principal:
+            Service: "apigateway.amazonaws.com"
+          Sid: ""
+  ApiGatewayUsagePlanKey00rst5cchrud2z2fpj00kLrt5:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::UsagePlanKey"
+    DeletionPolicy: "Retain"
+    Properties:
+      KeyType: "API_KEY"
+      UsagePlanId:
+        Ref: "ApiGatewayUsagePlan002z2fpj00ZgguH"
+      KeyId:
+        Ref: "ApiGatewayApiKey00rst5cchrud00S0Xgr"
+  ApiGatewayStage00dev00fxhNH:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::ApiGateway::Stage"
+    DeletionPolicy: "Retain"
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi00pe36p1f7bd00hEBD5"
+      DeploymentId:
+        Fn::GetAtt:
+        - "ApiGatewayDeployment00oiotxy00jsBrM"
+        - "DeploymentId"
+      StageName: "dev"
+      CacheClusterSize: "0.5"
+      TracingEnabled: false
+      CacheClusterEnabled: false
