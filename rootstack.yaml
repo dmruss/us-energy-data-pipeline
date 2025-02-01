@@ -1,0 +1,218 @@
+Metadata:
+  AWSToolsMetrics:
+    IaC_Generator: "arn:aws:cloudformation:us-west-1:160814116633:generatedTemplate/6c8a64ff-d2aa-490b-9cad-cdee402ac2c1"
+Parameters:
+  DeploymentVersion:
+    Type: String
+    Description: "A value to force redeployment (update this on each deployment)"
+    Default: "1"  # update this value each time you want to force a redeploy
+  StageName:
+    Type: String
+    Default: "dev"
+Resources:
+  ApiGatewayDeployment10oiotxy00jsBrM:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - ApiGatewayMethodPrimaryEnergyPost10KJASFB
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+      Description: !Sub "Deployment version: ${DeploymentVersion}"
+
+
+  S3BucketPolicy00usenergydata10RbFsY:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket:
+        Ref: "S3Bucket00usenergydata10WIGwi"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Resource:
+              Fn::Sub: "arn:aws:s3:::data-upload-us-energy-${AWS::AccountId}-${AWS::Region}/*"
+            Action: "s3:PutObject"
+            Effect: "Allow"
+            Principal:
+              Service: "apigateway.amazonaws.com"
+            Sid: "AllowApiGatewayPostToS3"
+
+  ApiGatewayApiKey00rst5cchrud10S0Xgr:
+    Type: "AWS::ApiGateway::ApiKey"
+    Properties:
+      StageKeys: []
+      Value: "Zks8oexjKv8sk3WiNcqFM9t31IOncFTx1bYqSNsD"
+      Enabled: true
+      Name:
+        Fn::Sub: "upload-data-${AWS::AccountId}-${AWS::Region}"
+
+  ApiGatewayRestApi10pe36p1f7bd00hEBD5:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      ApiKeySourceType: "HEADER"
+      EndpointConfiguration:
+        Types:
+          - "REGIONAL"
+      DisableExecuteApiEndpoint: false
+      Name:
+        Fn::Sub: "upload-data-${AWS::AccountId}-${AWS::Region}"
+
+  ApiGatewayUsagePlan102z2fpj00ZgguH:
+    Type: "AWS::ApiGateway::UsagePlan"
+    Properties:
+      ApiStages:
+        - Stage:
+            Ref: "ApiGatewayStage10dev00fxhNH"
+          ApiId:
+            Ref: "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+          Throttle: {}
+      Quota:
+        Period: "DAY"
+        Limit: 50
+        Offset: 0
+      Throttle:
+        BurstLimit: 1
+        RateLimit: 1
+      UsagePlanName:
+        Fn::Sub: "data-upload-${AWS::AccountId}-${AWS::Region}"
+
+  S3Bucket00usenergydata10WIGwi:
+    Type: "AWS::S3::Bucket"
+    DeletionPolicy: "Retain"
+    UpdateReplacePolicy: "Retain"
+    Properties:
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        BlockPublicAcls: true
+      BucketName:
+        Fn::Sub: "data-upload-us-energy-${AWS::AccountId}-${AWS::Region}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: "BucketOwnerEnforced"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: "AES256"
+
+  IAMRole00datauploadrole10FCIZq:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+      MaxSessionDuration: 3600
+      RoleName:
+        Fn::Sub: "upload-data-role-${AWS::AccountId}-${AWS::Region}"
+      Description: "Allows API Gateway to push logs to CloudWatch Logs."
+      Policies:
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Resource:
+                  Fn::Sub: "arn:aws:s3:::data-upload-us-energy-${AWS::AccountId}-${AWS::Region}/*"
+                Action: "s3:PutObject"
+                Effect: "Allow"
+                Sid: "VisualEditor0"
+          PolicyName: "upload-us-energy-data"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service: "apigateway.amazonaws.com"
+            Sid: ""
+
+  ApiGatewayUsagePlanKey10rst5cchrud2z2fpj00kLrt5:
+    Type: "AWS::ApiGateway::UsagePlanKey"
+    Properties:
+      KeyType: "API_KEY"
+      UsagePlanId:
+        Ref: "ApiGatewayUsagePlan102z2fpj00ZgguH"
+      KeyId:
+        Ref: "ApiGatewayApiKey00rst5cchrud10S0Xgr"
+
+  ApiGatewayLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName:
+        Fn::Sub: "/aws/apigateway/upload-data-${AWS::AccountId}-${AWS::Region}"
+      RetentionInDays: 14
+
+  ApiGatewayStage10dev00fxhNH:
+    Type: "AWS::ApiGateway::Stage"
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+      DeploymentId:
+        Fn::GetAtt:
+          - "ApiGatewayDeployment10oiotxy00jsBrM"
+          - "DeploymentId"
+      StageName: !Ref StageName
+      CacheClusterSize: "0.5"
+      TracingEnabled: false
+      CacheClusterEnabled: false
+      Tags:
+        - Key: "Deployment version"
+          Value: !Ref DeploymentVersion
+#      AccessLogSettings:
+#        DestinationArn:
+#          Fn::GetAtt:
+#            - ApiGatewayLogGroup
+#            - Arn
+#        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","caller":"$context.identity.caller","user":"$context.identity.user","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath","status":"$context.status","protocol":"$context.protocol"}'
+#      MethodSettings:
+#        - DataTraceEnabled: true
+#          HttpMethod: "*"
+#          LoggingLevel: INFO
+#          ResourcePath: "/*"
+
+  ApiGatewayResourcePrimaryEnergy10HFKSDJ:
+    Type: "AWS::ApiGateway::Resource"
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+      ParentId:
+        Fn::GetAtt:
+          - "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+          - "RootResourceId"
+      PathPart: "primary_energy"
+
+  ApiGatewayMethodPrimaryEnergyPost10KJASFB:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      RestApiId:
+        Ref: "ApiGatewayRestApi10pe36p1f7bd00hEBD5"
+      ResourceId:
+        Ref: "ApiGatewayResourcePrimaryEnergy10HFKSDJ"
+      HttpMethod: "POST"
+      AuthorizationType: "NONE"
+      ApiKeyRequired: true
+      RequestParameters:
+        method.request.querystring.year: true
+        method.request.querystring.month: true
+      Integration:
+        Type: "AWS"
+        IntegrationHttpMethod: "PUT"
+        Uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:s3:path/data-upload-us-energy-${AWS::AccountId}-${AWS::Region}/{year}/{month}.json"
+        Credentials:
+          Fn::GetAtt:
+            - "IAMRole00datauploadrole10FCIZq"
+            - "Arn"
+        RequestParameters:
+          integration.request.path.year: "method.request.querystring.year"
+          integration.request.path.month: "method.request.querystring.month"
+        IntegrationResponses:
+           -    StatusCode: "200"
+                # Map the integration's status code from S3 to the response header x-s3-status
+#                ResponseParameters:
+#                  method.response.header.x-s3-status: "$context.integration.status"
+                ResponseTemplates:
+                  application/json: ""
+      MethodResponses:
+        - StatusCode: "200"
+
+
